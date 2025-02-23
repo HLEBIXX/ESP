@@ -1,0 +1,161 @@
+-- Tworzenie GUI
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local CloseButton = Instance.new("TextButton")
+local UIStroke = Instance.new("UIStroke")
+local UIListLayout = Instance.new("UIListLayout")
+local Title = Instance.new("TextLabel")
+local SettingsButton = Instance.new("TextButton")
+local SettingsFrame = Instance.new("Frame")
+local BindButton = Instance.new("TextButton")
+local BackButton = Instance.new("TextButton")
+
+local sliders = {"Triggerbot", "ESP", "Speed", "Jump", "Aimbot"}
+local menuKey = Enum.KeyCode.RightShift
+local menuVisible = true
+
+local player = game:GetService("Players").LocalPlayer
+if not player then
+    warn("Players service is not available")
+    return
+end
+
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Ustawienia głównego okna GUI
+MainFrame.Size = UDim2.new(0, 350, 0, 350)
+MainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainFrame.Parent = ScreenGui
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+-- Tytuł
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = "KELLY"
+Title.TextSize = 20
+Title.Parent = MainFrame
+
+-- Przycisk zamykania GUI
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.Position = UDim2.new(1, -35, 0, 0)
+CloseButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+CloseButton.Text = "X"
+CloseButton.Parent = MainFrame
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui.Enabled = false
+end)
+
+-- Przycisk ustawień
+SettingsButton.Size = UDim2.new(0, 100, 0, 30)
+SettingsButton.Position = UDim2.new(0, 10, 0, 310)
+SettingsButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+SettingsButton.Text = "Ustawienia"
+SettingsButton.Parent = MainFrame
+SettingsButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    SettingsFrame.Visible = true
+end)
+
+-- Okno ustawień
+SettingsFrame.Size = MainFrame.Size
+SettingsFrame.Position = MainFrame.Position
+SettingsFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SettingsFrame.Visible = false
+SettingsFrame.Parent = ScreenGui
+
+-- Przycisk powrotu
+BackButton.Size = UDim2.new(0, 100, 0, 30)
+BackButton.Position = UDim2.new(0, 10, 0, 310)
+BackButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+BackButton.Text = "Powrót"
+BackButton.Parent = SettingsFrame
+BackButton.MouseButton1Click:Connect(function()
+    SettingsFrame.Visible = false
+    MainFrame.Visible = true
+end)
+
+-- Przycisk zmiany bindu
+BindButton.Size = UDim2.new(1, -20, 0, 30)
+BindButton.Position = UDim2.new(0, 10, 0, 10)
+BindButton.Text = "Bind Menu"
+BindButton.Parent = SettingsFrame
+
+BindButton.MouseButton1Click:Connect(function()
+    BindButton.Text = "Press Key..."
+    local connection
+    connection = game:GetService("UserInputService").InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            menuKey = input.KeyCode
+            BindButton.Text = "Bind: " .. tostring(menuKey.Name)
+            connection:Disconnect()
+        end
+    end)
+end)
+
+-- Funkcja przełączania GUI
+local function toggleMenu()
+    menuVisible = not menuVisible
+    ScreenGui.Enabled = menuVisible
+end
+
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.KeyCode == menuKey then
+        toggleMenu()
+    end
+end)
+
+-- Lista układająca suwaki
+UIListLayout.Parent = MainFrame
+UIListLayout.FillDirection = Enum.FillDirection.Vertical
+UIListLayout.Padding = UDim.new(0, 5)
+
+-- Funkcja do wyświetlania komunikatu
+local function showMessage(text)
+    local messageLabel = Instance.new("TextLabel")
+    messageLabel.Size = UDim2.new(0, 200, 0, 50)
+    messageLabel.Position = UDim2.new(0.4, 0, 0.1, 0)
+    messageLabel.BackgroundTransparency = 1
+    messageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    messageLabel.Text = text
+    messageLabel.TextSize = 20
+    messageLabel.Parent = ScreenGui
+    
+    task.delay(10, function()
+        messageLabel:Destroy()
+    end)
+end
+
+-- Tworzenie suwaków
+for _, name in pairs(sliders) do
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(0, 250, 0, 30)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    sliderFrame.Parent = MainFrame
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 150, 1, 0)
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Parent = sliderFrame
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 80, 1, 0)
+    button.Position = UDim2.new(1, -80, 0, 0)
+    button.Text = "OFF"
+    button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    button.Parent = sliderFrame
+
+    local enabled = false
+    button.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        button.Text = enabled and "ON" or "OFF"
+        button.BackgroundColor3 = enabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+        
+        if enabled then
+            showMessage(name .. " włączony")
+        end
+    end)
+end
