@@ -1,0 +1,83 @@
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local HttpService = game:GetService("HttpService")
+
+local player = Players.LocalPlayer
+
+-- Funkcja do stworzenia GUI
+local function createGui()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 200)
+    frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+    frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    frame.Parent = screenGui
+    frame.Active = true
+    frame.Draggable = true
+    
+    local textBox = Instance.new("TextBox")
+    textBox.Size = UDim2.new(0.8, 0, 0.2, 0)
+    textBox.Position = UDim2.new(0.1, 0, 0.2, 0)
+    textBox.PlaceholderText = "Podaj klucz"
+    textBox.Parent = frame
+    
+    local getKeyButton = Instance.new("TextButton")
+    getKeyButton.Size = UDim2.new(0.4, 0, 0.2, 0)
+    getKeyButton.Position = UDim2.new(0.05, 0, 0.5, 0)
+    getKeyButton.Text = "Get Key"
+    getKeyButton.Parent = frame
+    
+    getKeyButton.MouseButton1Click:Connect(function()
+        setclipboard("https://linkvertise.com/1253042/hive-hub?o=sharing")
+        StarterGui:SetCore("SendNotification", {
+            Title = "Copied!", 
+            Text = "The link has been copied to your clipboard.",
+            Duration = 3
+        })
+    end)
+    
+    local confirmButton = Instance.new("TextButton")
+    confirmButton.Size = UDim2.new(0.4, 0, 0.2, 0)
+    confirmButton.Position = UDim2.new(0.55, 0, 0.5, 0)
+    confirmButton.Text = "Confirm"
+    confirmButton.Parent = frame
+    
+    confirmButton.MouseButton1Click:Connect(function()
+        if textBox.Text == "n1d32_321" then
+            frame:Destroy()
+            
+            local messageFrame = Instance.new("Frame")
+            messageFrame.Size = UDim2.new(0, 200, 0, 100)
+            messageFrame.Position = UDim2.new(0.5, -100, 0.5, -50)
+            messageFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            messageFrame.Parent = screenGui
+            messageFrame.Active = true
+            messageFrame.Draggable = true
+            
+            local message = Instance.new("TextLabel")
+            message.Size = UDim2.new(1, 0, 1, 0)
+            message.BackgroundTransparency = 1
+            message.TextScaled = true
+            message.TextColor3 = Color3.fromRGB(255, 255, 255)
+            message.Text = "KELLY"
+            message.Parent = messageFrame
+            
+            local closeButton = Instance.new("TextButton")
+            closeButton.Size = UDim2.new(0, 30, 0, 30)
+            closeButton.Position = UDim2.new(1, -35, 0, 5)
+            closeButton.Text = "X"
+            closeButton.Parent = messageFrame
+            
+            closeButton.MouseButton1Click:Connect(function()
+                messageFrame:Destroy()
+            end)
+        else
+            textBox.Text = "Błędny klucz!"
+        end
+    end)
+end
+
+-- Uruchomienie GUI
+createGui()
