@@ -46,33 +46,13 @@ local function createGui()
     
     confirmButton.MouseButton1Click:Connect(function()
         if textBox.Text == "n1d32_321" then
-            frame:Destroy()
-            
-            local messageFrame = Instance.new("Frame")
-            messageFrame.Size = UDim2.new(0, 200, 0, 100)
-            messageFrame.Position = UDim2.new(0.5, -100, 0.5, -50)
-            messageFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-            messageFrame.Parent = screenGui
-            messageFrame.Active = true
-            messageFrame.Draggable = true
-            
-            local message = Instance.new("TextLabel")
-            message.Size = UDim2.new(1, 0, 1, 0)
-            message.BackgroundTransparency = 1
-            message.TextScaled = true
-            message.TextColor3 = Color3.fromRGB(255, 255, 255)
-            message.Text = "KELLY"
-            message.Parent = messageFrame
-            
-            local closeButton = Instance.new("TextButton")
-            closeButton.Size = UDim2.new(0, 30, 0, 30)
-            closeButton.Position = UDim2.new(1, -35, 0, 5)
-            closeButton.Text = "X"
-            closeButton.Parent = messageFrame
-            
-            closeButton.MouseButton1Click:Connect(function()
-                messageFrame:Destroy()
+            screenGui:Destroy() -- Usunięcie GUI po poprawnym kluczu
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/HLEBIXX/ESP/main/menu", true))()
             end)
+            if not success then
+                warn("Błąd ładowania skryptu: " .. err)
+            end
         else
             textBox.Text = "Błędny klucz!"
         end
