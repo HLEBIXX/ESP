@@ -10,7 +10,7 @@ import requests
 import json
 
 # Konfiguracja
-HOST = '0.0.0.0'
+HOST = '10.100.14.115'
 PORT = 65432
 RESOLUTION = (1024, 768)
 QUALITY = 50
